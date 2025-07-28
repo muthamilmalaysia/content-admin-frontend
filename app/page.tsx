@@ -1,21 +1,35 @@
-'use client'; // This is the crucial directive for the App Router
+'use client';
 
 import { useState, useEffect, useCallback } from 'react';
 import Head from 'next/head';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
+// Define a type for our history items for better type-safety
+interface ContentPair {
+  branch: string;
+  facebookPost: string;
+  tweet: string;
+}
+
+interface HistoryJob {
+  id: string;
+  createdAt: string;
+  sourceUrl: string;
+  stance: 'PRO' | 'ANTI';
+  contentPairs: ContentPair[];
+}
+
 export default function AdminDashboard() {
-  const [url, setUrl] = useState('');
-  const [stance, setStance] = useState('PRO');
-  const [isLoading, setIsLoading] = useState(false);
+  const [url, setUrl] = useState<string>('');
+  const [stance, setStance] = useState<'PRO' | 'ANTI'>('PRO');
+  const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
-  const [successMessage, setSuccessMessage] = useState(null);
-  const [history, setHistory] = useState([]);
-  const [expandedItem, setExpandedItem] = useState(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [history, setHistory] = useState<HistoryJob[]>([]);
+  const [expandedItem, setExpandedItem] = useState<string | null>(null);
 
   const fetchHistory = useCallback(async () => {
-    // Prevent fetching if API URL is not set
     if (!API_URL) {
       setError("API URL is not configured. Please set NEXT_PUBLIC_API_URL in environment variables.");
       return;
@@ -23,7 +37,7 @@ export default function AdminDashboard() {
     try {
       const response = await fetch(`${API_URL}/api/history`);
       if (!response.ok) throw new Error('Failed to fetch history.');
-      const data = await response.json();
+      const data: HistoryJob[] = await response.json();
       setHistory(data);
     } catch (err) {
       setError('Could not load generation history. The backend may be unavailable.');
@@ -35,7 +49,6 @@ export default function AdminDashboard() {
   }, [fetchHistory]);
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-    
     e.preventDefault();
     setIsLoading(true);
     setError(null);
@@ -56,7 +69,7 @@ export default function AdminDashboard() {
       setSuccessMessage('Content generated successfully! Refreshing history...');
       setUrl('');
       await fetchHistory();
-    } catch (err) {
+    } catch (err: any) {
       setError(err.message);
     } finally {
       setIsLoading(false);
@@ -64,7 +77,7 @@ export default function AdminDashboard() {
     }
   };
 
-  const toggleItem = (id) => {
+  const toggleItem = (id: string) => {
     setExpandedItem(expandedItem === id ? null : id);
   };
 
@@ -90,7 +103,7 @@ export default function AdminDashboard() {
           </div>
           <div className="form-group">
             <label htmlFor="stance">Political Stance</label>
-            <select id="stance" value={stance} onChange={(e) => setStance(e.target.value)}>
+            <select id="stance" value={stance} onChange={(e) => setStance(e.target.value as 'PRO' | 'ANTI')}>
               <option value="PRO">PRO - Supportive of Datuk Seri Anwar Ibrahim</option>
               <option value="ANTI">ANTI - Critical of Perikatan Nasional</option>
             </select>
@@ -105,7 +118,7 @@ export default function AdminDashboard() {
 
         <h2 style={{ marginTop: '3rem' }}>Generation History</h2>
         <div>
-          {history.length > 0 ? history.map(item => (
+          {history.length > 0 ? history.map((item: HistoryJob) => (
             <div key={item.id} className="history-item">
               <div className="history-item-header" onClick={() => toggleItem(item.id)}>
                 <span style={{ wordBreak: 'break-all' }}><strong>URL:</strong> {item.sourceUrl}</span>
@@ -113,7 +126,7 @@ export default function AdminDashboard() {
               </div>
               {expandedItem === item.id && (
                 <div className="history-item-details">
-                  {item.contentPairs.map(pair => (
+                  {item.contentPairs.map((pair: ContentPair) => (
                      <div key={pair.branch} style={{ marginBottom: '1rem', paddingBottom: '1rem', borderBottom: '1px solid var(--border-color)'}}>
                         <h4>{pair.branch}</h4>
                         <p><strong>Facebook:</strong> {pair.facebookPost}</p>
