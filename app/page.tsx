@@ -1,103 +1,130 @@
-import Image from "next/image";
+'use client'; // This is the crucial directive for the App Router
 
-export default function Home() {
+import { useState, useEffect, useCallback } from 'react';
+import Head from 'next/head';
+
+const API_URL = process.env.NEXT_PUBLIC_API_URL;
+
+export default function AdminDashboard() {
+  const [url, setUrl] = useState('');
+  const [stance, setStance] = useState('PRO');
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const [successMessage, setSuccessMessage] = useState(null);
+  const [history, setHistory] = useState([]);
+  const [expandedItem, setExpandedItem] = useState(null);
+
+  const fetchHistory = useCallback(async () => {
+    // Prevent fetching if API URL is not set
+    if (!API_URL) {
+      setError("API URL is not configured. Please set NEXT_PUBLIC_API_URL in environment variables.");
+      return;
+    }
+    try {
+      const response = await fetch(`${API_URL}/api/history`);
+      if (!response.ok) throw new Error('Failed to fetch history.');
+      const data = await response.json();
+      setHistory(data);
+    } catch (err) {
+      setError('Could not load generation history. The backend may be unavailable.');
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchHistory();
+  }, [fetchHistory]);
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setIsLoading(true);
+    setError(null);
+    setSuccessMessage(null);
+
+    try {
+      const response = await fetch(`${API_URL}/api/generate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url, stance }),
+      });
+
+      if (!response.ok) {
+        const errData = await response.json();
+        throw new Error(errData.error || 'An unknown error occurred.');
+      }
+
+      setSuccessMessage('Content generated successfully! Refreshing history...');
+      setUrl('');
+      await fetchHistory();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setIsLoading(false);
+      setTimeout(() => setSuccessMessage(null), 5000);
+    }
+  };
+
+  const toggleItem = (id) => {
+    setExpandedItem(expandedItem === id ? null : id);
+  };
+
   return (
-    <div className="font-sans grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="font-mono list-inside list-decimal text-sm/6 text-center sm:text-left">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] font-mono font-semibold px-1 py-0.5 rounded">
-              app/page.tsx
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
-
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
+    <main>
+      <Head>
+        <title>Admin - Content Generation</title>
+      </Head>
+      <div className="container">
+        <h1>Content Generation Engine</h1>
+        
+        <form onSubmit={handleSubmit}>
+          <div className="form-group">
+            <label htmlFor="url">News Article URL</label>
+            <input
+              type="url"
+              id="url"
+              value={url}
+              onChange={(e) => setUrl(e.target.value)}
+              required
+              placeholder="https://example.com/news/article"
             />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
+          </div>
+          <div className="form-group">
+            <label htmlFor="stance">Political Stance</label>
+            <select id="stance" value={stance} onChange={(e) => setStance(e.target.value)}>
+              <option value="PRO">PRO - Supportive of Datuk Seri Anwar Ibrahim</option>
+              <option value="ANTI">ANTI - Critical of Perikatan Nasional</option>
+            </select>
+          </div>
+          <button type="submit" disabled={isLoading || !API_URL}>
+            {isLoading ? 'Generating...' : 'Generate Content'}
+          </button>
+        </form>
+
+        {error && <div className="message error">{error}</div>}
+        {successMessage && <div className="message success">{successMessage}</div>}
+
+        <h2 style={{ marginTop: '3rem' }}>Generation History</h2>
+        <div>
+          {history.length > 0 ? history.map(item => (
+            <div key={item.id} className="history-item">
+              <div className="history-item-header" onClick={() => toggleItem(item.id)}>
+                <span style={{ wordBreak: 'break-all' }}><strong>URL:</strong> {item.sourceUrl}</span>
+                <span style={{ whiteSpace: 'nowrap', marginLeft: '1rem' }}><strong>Stance:</strong> {item.stance} | {new Date(item.createdAt).toLocaleString()}</span>
+              </div>
+              {expandedItem === item.id && (
+                <div className="history-item-details">
+                  {item.contentPairs.map(pair => (
+                     <div key={pair.branch} style={{ marginBottom: '1rem', paddingBottom: '1rem', borderBottom: '1px solid var(--border-color)'}}>
+                        <h4>{pair.branch}</h4>
+                        <p><strong>Facebook:</strong> {pair.facebookPost}</p>
+                        <p><strong>Tweet:</strong> {pair.tweet}</p>
+                     </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )) : <p>No history found.</p>}
         </div>
-      </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
-    </div>
+      </div>
+    </main>
   );
 }
