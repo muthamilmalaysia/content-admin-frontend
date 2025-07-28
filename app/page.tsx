@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import Head from 'next/head';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL;
+const API_URL = process.env.NEXT_PUBLIC_API_URL ? process.env.NEXT_PUBLIC_API_URL.replace(/\/$/, "") : '';
 
 // Define a type for our history items for better type-safety
 interface ContentPair {
