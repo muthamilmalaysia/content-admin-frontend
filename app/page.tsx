@@ -34,7 +34,8 @@ export default function AdminDashboard() {
     fetchHistory();
   }, [fetchHistory]);
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    
     e.preventDefault();
     setIsLoading(true);
     setError(null);
