@@ -9,7 +9,7 @@ export default function AdminDashboard() {
   const [url, setUrl] = useState('');
   const [stance, setStance] = useState('PRO');
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState(null);
+  const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState(null);
   const [history, setHistory] = useState([]);
   const [expandedItem, setExpandedItem] = useState(null);
